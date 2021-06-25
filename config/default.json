@@ -1,0 +1,11 @@
+{
+    "Settings": {
+        "channelAccessToken": "6tpnK/HxYXT7XTltH0FtwVfygkxLKIOwbCOulzsDq1sg8QEimJx7iDmgXFS7bsGLXzmXIB2G8rKi8SxRfF4GO19blPqgn9N04wsdllQbb2+NPWySGgBpQhrcIb+p57YJUKJsWKMJY1ZqfEmcDd7wEgdB04t89/1O/w1cDnyilFU=",
+        "channelSecret": "33db6ff4805276d12efbc34ac2245ab5",
+        "googleSheetId": "1uUGUFSw4L_hs5EtmoEEpDscvbc-ZcRtdE5HeBVzAmYI",
+        "googleSheetPath": "https://docs.google.com/spreadsheets/d/1uUGUFSw4L_hs5EtmoEEpDscvbc-ZcRtdE5HeBVzAmYI/edit#gid=350676724",
+        "webPath": "https://linebot-web.chainsecurity.asia",
+        "liffPath": "https://liff.line.me/1656146917-y4zkNvPB",
+        "defaultImg": "https://www.chainsecurity.asia/images/BCS_CN.png"
+    }
+}

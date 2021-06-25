@@ -1,0 +1,2 @@
+const msgConst = require('./MessageConst');
+
