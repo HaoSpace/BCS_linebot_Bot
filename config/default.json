@@ -6,6 +6,8 @@
         "googleSheetPath": "https://docs.google.com/spreadsheets/d/1uUGUFSw4L_hs5EtmoEEpDscvbc-ZcRtdE5HeBVzAmYI/edit#gid=350676724",
         "webPath": "https://linebot-web.chainsecurity.asia",
         "liffPath": "https://liff.line.me/1656146917-y4zkNvPB",
-        "defaultImg": "https://www.chainsecurity.asia/images/BCS_CN.png"
+        "defaultImg": "https://www.chainsecurity.asia/images/BCS_CN.png",
+        "richmenu_accountLink": "richmenu-c6f932741ed17a8447088b6313e4ae22",
+        "richmenu_main": "richmenu-6f07bc308bfb9e5ce595200d9ded2e5b"
     }
 }
