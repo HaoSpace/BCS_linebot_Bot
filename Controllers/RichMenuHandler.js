@@ -1,8 +1,8 @@
 const settings = require('config');
 
 
-const richmenu_accountLink ='richmenu-795141e0041ef401f6ed9db338155845';
-const richmenu_main ='richmenu-81b25b8b516d359a8596183730249656';
+const richmenu_accountLink = settings.get('Settings.richmenu_accountLink'),;
+const richmenu_main = settings.get('Settings.richmenu_main');
 
 
 const setAccountLinkMenu = async (userId, client) => {
