@@ -1,7 +1,7 @@
 const settings = require('config');
 
 
-const richmenu_accountLink = settings.get('Settings.richmenu_accountLink'),;
+const richmenu_accountLink = settings.get('Settings.richmenu_accountLink');
 const richmenu_main = settings.get('Settings.richmenu_main');
 
 
