@@ -256,8 +256,7 @@ function handleFollow (event, client) {
 }
 
 function handleUnfollow (event, client) {
-    console.log('unfollow');
-    return msgConst.text(`Joined ${event.source.type}`);
+    
 }
 
 function handleJoin (event) {
@@ -281,9 +280,9 @@ async function handleAccountLink(event, client) {
     db.addData(event.source.userId, event.link.nonce);
     richMenu.setMainMenu(event.source.userId, client);
 
-    var url =`${webPath}/getname?nonce=${nonce}`
+    var url =`${webPath}/getname?nonce=${event.link.nonce}`
     var username = await getWebData(url);
-    googleSheet.addSheet(username);
+    await googleSheet.addSheet(username);
 
     return msgConst.text(`帳號綁定完成`);
 }
@@ -340,9 +339,9 @@ function eventLeaveStart (postback, username) {
     var targetDate = new Date(time).toLocaleDateString();
 
     googleSheet.addData(targetDate, sheetConst.offWorkStart(type, targetTime), username);
-
+    
     //send end picker
-    var action = msgConst.action_pickTime('設定結束時間', `leaveEnd_${type}`, 'datetime', time);
+    var action = msgConst.action_pickTime('設定結束時間', `leaveEnd_${type}_${targetDate}`, 'datetime', time);
     var quickEvent = msgConst.quickReply(`請假起始時間: \n${time.replace('T', ' ')}\n假別: ${type}`, action);
 
     return quickEvent;
@@ -350,45 +349,112 @@ function eventLeaveStart (postback, username) {
 
 async function eventLeaveEnd (postback, username) {
     //handle end time
-    var time = postback.params.datetime;
-    var type = postback.data.substring(9, postback.data.length);
-    var targetTime = new Date(time).toLocaleTimeString();
-    var targetDate = new Date(time).toLocaleDateString();
+    var currentTime = new Date(postback.params.datetime);
+    var data = postback.data.substring(9, postback.data.length);
+    var targetTime = currentTime.toLocaleTimeString();
+    var targetDate = currentTime.toLocaleDateString();
 
-    var row = await googleSheet.getData(targetDate, username);
-    var startTimeAry = [];
-    var hour = '';
+    data = data.split('_');
+    var type = data[0];
+    var startDate = data[1];
+
+    var startRow = await googleSheet.getData(startDate, username);
+    var currentRow = await googleSheet.getData(targetDate, username);
     
-    if (row.OffWorkStart && row.OffWorkStart != '') {
-        var startTime_Str = sheetTimeFormat_24(row.Date, row.OffWorkStart, 'T');
-        var startTime = new Date(startTime_Str);
-    }
+    var startTime_Str = sheetTimeFormat_24(startDate, startRow.OffWorkStart, 'T');
+    var startTime = new Date(startTime_Str);
    
-   
-    if (row == null || 
-        row.Date == '' || 
-        !row.OffWorkStart ||
-        row.OffWorkStart == '' ||
-        new Date(time).getTime() < startTime.getTime()) {
-        var action = msgConst.action_pickTime('設定結束時間', `leaveEnd_${type}`, 'datetime');
+    if (currentTime.getTime() < startTime.getTime()) {
+        var action = msgConst.action_pickTime('設定結束時間', `leaveEnd_${data.join('_')}`, 'datetime');
         var quickEvent = msgConst.quickReply('結束時間不可早於起始時間，請重新設定', action);
     
         return quickEvent;
     } else {
-        googleSheet.addData(targetDate, sheetConst.offWorkEnd(targetTime), username);
+        var deviation = (Date.parse(targetDate) - Date.parse(startDate)) / (24*60*60*1000);
+        
+        if (deviation == 0) {
+            googleSheet.addData(currentRowDate, sheetConst.offWorkEnd(targetTime), username);
+        } else {
+            var asyncRun = async () => {
+                for (var i = 0; i <= deviation; i++) {
+
+                    var dateTic = Date.parse(startTime.toLocaleDateString());
+                    var currentRowDate = new Date(dateTic + ((i) * (24*60*60*1000))).toLocaleDateString();
+                    
+                    if (i == deviation) {
+                        await googleSheet.addData(currentRowDate, sheetConst.offWorkEnd(targetTime), username);
+                    } else {
+                        await googleSheet.addData(currentRowDate, sheetConst.offWorkEnd('下午 06:00:00'), username);
+                    }
+                    
+                    var type_str = `${type} group(${startDate}-${targetDate})`;
+                    if (i != 0) {
+                        await googleSheet.addData(currentRowDate, sheetConst.offWorkStart(type_str, '上午 09:00:00'), username);
+                    } else {
+                        await googleSheet.addData(currentRowDate, sheetConst.offWorkStart(type_str, startTime.toLocaleTimeString()), username);
+                    }
+                }
+            }
+
+            asyncRun();
+        }
 
         var notifyMsg = '- 請假申請' +
                         `\n假別：${type}` +
                         `\n開始時間：${startTime_Str.replace('T', ' ')}` +
-                        `\n結束時間：${time.replace('T', ' ')}` + 
+                        `\n結束時間：${postback.params.datetime.replace('T', ' ')}` + 
                         `\n人員：${username}\n\n` +
                         `\n查核連結：${sheetPath}`
         getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
         
-        var text1 = msgConst.text(`請假結束時間: \n${time.replace('T', ' ')}\n假別: ${type}`);
+        var text1 = msgConst.text(`請假結束時間: \n${postback.params.datetime.replace('T', ' ')}\n假別: ${type}`);
         var text2 = msgConst.text('已申請請假，待核准');
         return [text1, text2];
     }
+}
+
+async function eventOffWorkCancel (username, postback) {
+    var date = postback.params.date;
+    var targetDate = new Date(date).toLocaleDateString();
+    var rowData = await googleSheet.getData(targetDate, username);
+    var type_str = rowData.OffWorkType;
+
+    if (rowData != null  && type_str && type_str != '' && !rowData.OffWorkType.includes('已取消')) {
+        if (rowData.OffWorkType.includes('group')) {
+            type_str = type_str.split(' ');
+            var type = type_str[0];
+            var dateAry = type_str[1].replace('group(', '').replace(')', '').split('-');
+            var deviation = (Date.parse(dateAry[1]) - Date.parse(dateAry[0])) / (24*60*60*1000);
+
+            for (var i = 0; i <= deviation; i++) {
+                var dateTic = Date.parse(dateAry[0]);
+                var currentRowDate = new Date(dateTic + ((i) * (24*60*60*1000))).toLocaleDateString();
+                googleSheet.addData(currentRowDate, sheetConst.offWorkStart(`${type}(已取消)`, '上午 9:00:00'), username);
+            }
+
+            var notifyMsg = '- 請假取消' +
+            `\n假別：${type}` +
+            `\n開始時間：${dateAry[0]}` +
+            `\n結束時間：${dateAry[1]}` +
+            `\n人員：${username}`;
+
+            getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
+            
+            return msgConst.text(`請假已取消 - ${targetDate}`);
+        } else {
+            googleSheet.addData(targetDate, sheetConst.offWorkStart(`${type_str}(已取消)`, rowData.OffWorkStart), username);
+
+            var notifyMsg = '- 請假取消' +
+                            `\n假別：${type_str}` +
+                            `\n開始時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
+                            `\n結束時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
+                            `\n人員：${username}`;
+            getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
+            return msgConst.text(`請假已取消 - ${targetDate}`);
+        }
+    }
+
+    return msgConst.text('查無請假資料');
 }
 
 function eventActivity () {
@@ -401,31 +467,6 @@ function eventActivity () {
 
     return quickEvent;
 } 
-
-async function eventOffWorkCancel (username, postback) {
-    var date = postback.params.date;
-    var targetDate = new Date(date).toLocaleDateString();
-    var rowData = await googleSheet.getData(targetDate, username);
-
-    if (rowData != null) {
-        var offWorkType = rowData.OffWorkType;
-        if (offWorkType && offWorkType != '') {
-            googleSheet.addData(targetDate, sheetConst.offWorkStart('',''), username);
-            googleSheet.addData(targetDate, sheetConst.offWorkEnd(''), username);
-
-            var notifyMsg = '- 請假取消' +
-                            `\n假別：${rowData.OffWorkType}` +
-                            `\n開始時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
-                            `\n結束時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
-                            `\n人員：${username}`;
-            
-            getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
-            return msgConst.text(`請假已取消 - ${targetDate}`);
-        }
-    }
-
-    return msgConst.text('查無請假資料');
-}
 
 function evenActivityTime (username) {
     var sheets = googleSheet.getAllSheetName(); 
@@ -450,7 +491,6 @@ async function eventSetActivity (event, client) {
             var result = await googleSheet.addData(targetDate, sheetConst.activity(eventData.eventName.toString(), targetTime, eventData.members.join(',')), member);
             
             if (result == 'out of range') {
-                console.log("err")
                 errorMsg += `\n${member} 日期有誤，請確認後重新建立` 
             }
             
@@ -695,6 +735,17 @@ function sheetTimeFormat_24 (date, time , join = ' ') {
     date[2] = date[2].padStart(2, '0');
 
     return date.join('-') + join + hour + ":" + timeAry[1];
+}
+
+function randomHash(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+   return result;
 }
 
 module.exports = {
