@@ -65,6 +65,41 @@ const activity5 = (name, time, member) => {
         'ActivityMember5': member
     }
 }
+const activity6 = (name, time, member) => {
+    return {
+        'ActivityName6': name,
+        'ActivityTime6': time,
+        'ActivityMember6': member
+    }
+}
+const activity7 = (name, time, member) => {
+    return {
+        'ActivityName7': name,
+        'ActivityTime7': time,
+        'ActivityMember7': member
+    }
+}
+const activity8 = (name, time, member) => {
+    return {
+        'ActivityName8': name,
+        'ActivityTime8': time,
+        'ActivityMember8': member
+    }
+}
+const activity9 = (name, time, member) => {
+    return {
+        'ActivityName9': name,
+        'ActivityTime9': time,
+        'ActivityMember9': member
+    }
+}
+const activity10 = (name, time, member) => {
+    return {
+        'ActivityName10': name,
+        'ActivityTime10': time,
+        'ActivityMember10': member
+    }
+}
 
 module.exports = {
     date,
@@ -76,5 +111,10 @@ module.exports = {
     activity2,
     activity3,
     activity4,
-    activity5
+    activity5,
+    activity6,
+    activity7,
+    activity8,
+    activity9,
+    activity10
 };

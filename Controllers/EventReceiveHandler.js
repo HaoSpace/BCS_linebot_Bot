@@ -38,6 +38,48 @@ async function onReceiveEvent (event, client, username = '') {
 
 }
 
+async function handlePostback (event, client, username) {
+    let data = event.postback.data;
+    switch (data) {
+        case 'checkIn':
+            return eventCheckIn();
+        case 'checkOut':
+            return eventCheckOut(username);
+        case 'leave':
+            return eventLeave();
+        case 'activity':
+            return eventActivity();
+        case 'activityTime':
+            return evenActivityTime(username);
+        case 'cancelOffWork':
+            return await eventOffWorkCancel (username, event.postback);
+        case 'cancelActivity':
+            return await eventActivitySelectToCancel(username, event.postback);
+        case 'link':
+            return await linkAccount(event, client);
+        case 'simpleLink':
+            return simpleLinkAccount(event, client);
+    }
+
+    if (data.includes('leaveStart')) {
+        return eventLeaveStart(event.postback, username);
+    }
+
+    if (data.includes('leaveEnd')) {
+        return eventLeaveEnd(event.postback, username);
+    }
+
+    if (data.includes('cancel_activity')){ 
+        return await eventActivityCancel(username, data);
+    }
+
+    if (data === 'DATE' || data === 'TIME' || data === 'DATETIME') {
+        data += `(${JSON.stringify(event.postback.params)})`;
+    }
+
+    return msgConst.text(`Got postback: ${data}`)
+}
+
 function handleMessage (event, client, username) {
     var currentTime = new Date(Date.now()).toLocaleTimeString();
     console.log(`Msg Recived: ${event.message.text}, UserID: ${event.source.userId}, Time: ${currentTime}`);
@@ -91,14 +133,18 @@ function handleText (event, client, username) {
     return msgConst.text(`你說的是: ${event.message.text}？`);
 }
 
+
+function handleBeacon (event) {
+    return msgConst.text(`Got beacon: ${event.beacon.hwid}`);
+}
+
 function testGoogle () {
     //googleSheet.addSheet('Jason');
     // googleSheet.appendRow({'日期': 123123});
-    var currentDate = new Date(Date.now()).toLocaleDateString();
-    var dateTic = Date.parse(currentDate);
-    var currentDate = new Date(dateTic + ((6) * (24*60*60*1000))).toLocaleDateString();
-    googleSheet.addData(currentDate, {...sheetConst.checkIn(123, 456), ...sheetConst.checkOut(789)});
-
+    // var currentDate = new Date(Date.now()).toLocaleDateString();
+    // var dateTic = Date.parse(currentDate);
+    // var currentDate = new Date(dateTic + ((6) * (24*60*60*1000))).toLocaleDateString();
+    // googleSheet.addData(currentDate, {...sheetConst.checkIn(123, 456), ...sheetConst.checkOut(789)});
     return msgConst.text('google');
 }
 
@@ -112,7 +158,6 @@ function testDB () {
     //     console.log(`token: ${token}`);
     // }));
     // console.log(db.removeData('test1'));
-
     return msgConst.text('db');
 }
 
@@ -195,22 +240,24 @@ async function handleLocation (event, username) {
 }
 
 function handleSticker () {
-    return msgConst.text('Got sticker');
+    return msgConst.text('你傳貼圖給我幹嘛？');
 }
 
 function handleFollow (event, client) {
     db.getData(event.source.userId, (error, rowData) => {
-        if (error) {
+        if (error != null) {
+            console.log('init Account link');
             richMenu.setAccountLinkMenu(event.source.userId, client);
         } else {
             richMenu.setMainMenu(event.source.userId, client);
+            console.log('init main: ' + rowData.nonce + ', ' + rowData.userId);
         }
     });
 }
 
 function handleUnfollow (event, client) {
-    richMenu.setAccountLinkMenu(event.source.userId, client);
-    return null;
+    console.log('unfollow');
+    return msgConst.text(`Joined ${event.source.type}`);
 }
 
 function handleJoin (event) {
@@ -222,53 +269,7 @@ function handleLeave (event) {
     return null;
 }
 
-async function handlePostback (event, client, username) {
-    let data = event.postback.data;
-    switch (data) {
-        case 'checkIn':
-            return eventCheckIn();
-        case 'checkOut':
-            return eventCheckOut(username);
-        case 'leave':
-            return eventLeave();
-        case 'activity':
-            return eventActivity();
-        case 'activityTime':
-            return evenActivityTime(username);
-        case 'cancelOffWork':
-            return await eventOffWorkCancel (username, event.postback);
-        case 'cancelActivity':
-            return await eventActivitySelectToCancel(username, event.postback);
-        case 'link':
-            return await linkAccount(event, client);
-        case 'simpleLink':
-            return simpleLinkAccount(event, client);
-    }
-
-    if (data.includes('leaveStart')) {
-        return eventLeaveStart(event.postback, username);
-    }
-
-    if (data.includes('leaveEnd')) {
-        return eventLeaveEnd(event.postback, username);
-    }
-
-    if (data.includes('cancel_activity')){ 
-        return await eventActivityCancel(username, data);
-    }
-
-    if (data === 'DATE' || data === 'TIME' || data === 'DATETIME') {
-        data += `(${JSON.stringify(event.postback.params)})`;
-    }
-
-    return msgConst.text(`Got postback: ${data}`)
-}
-
-function handleBeacon (event) {
-    return msgConst.text(`Got beacon: ${event.beacon.hwid}`);
-}
-
-function handleAccountLink(event, client) {
+async function handleAccountLink(event, client) {
     if (event.link.result != 'ok') {
         return msgConst.text('帳號綁定失敗，請向相關人員確認。');
     }
@@ -279,6 +280,11 @@ function handleAccountLink(event, client) {
 
     db.addData(event.source.userId, event.link.nonce);
     richMenu.setMainMenu(event.source.userId, client);
+
+    var url =`${webPath}/getname?nonce=${nonce}`
+    var username = await getWebData(url);
+    googleSheet.addSheet(username);
+
     return msgConst.text(`帳號綁定完成`);
 }
 
@@ -354,21 +360,7 @@ async function eventLeaveEnd (postback, username) {
     var hour = '';
     
     if (row.OffWorkStart && row.OffWorkStart != '') {
-        
-        if (row.OffWorkStart.includes('下午 ')) {
-            startTimeAry = row.OffWorkStart.replace('下午 ', '').split(':');
-            hour = parseInt(startTimeAry[0]) + 12;
-        } else {
-            startTimeAry = row.OffWorkStart.replace('上午 ', '').split(':');
-            hour = parseInt(startTimeAry[0])
-            hour = hour.toString().padStart(2, '0');
-        }
-
-        var date = row.Date.split('/');
-        date[1] = date[1].padStart(2, '0');
-        date[2] = date[2].padStart(2, '0');
-    
-        var startTime_Str = date.join('-') + "T" + hour + ":" + startTimeAry[1];
+        var startTime_Str = sheetTimeFormat_24(row.Date, row.OffWorkStart, 'T');
         var startTime = new Date(startTime_Str);
     }
    
@@ -379,7 +371,7 @@ async function eventLeaveEnd (postback, username) {
         row.OffWorkStart == '' ||
         new Date(time).getTime() < startTime.getTime()) {
         var action = msgConst.action_pickTime('設定結束時間', `leaveEnd_${type}`, 'datetime');
-        var quickEvent = msgConst.quickReply('時間不合法請重新設定', action);
+        var quickEvent = msgConst.quickReply('結束時間不可早於起始時間，請重新設定', action);
     
         return quickEvent;
     } else {
@@ -423,8 +415,8 @@ async function eventOffWorkCancel (username, postback) {
 
             var notifyMsg = '- 請假取消' +
                             `\n假別：${rowData.OffWorkType}` +
-                            `\n開始時間：${rowData.Date} ${rowData.OffWorkStart}` +
-                            `\n結束時間：${rowData.Date} ${rowData.OffWorkStart}` +
+                            `\n開始時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
+                            `\n結束時間：\n${sheetTimeFormat_24(rowData.Date, rowData.OffWorkStart)}` +
                             `\n人員：${username}`;
             
             getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
@@ -455,29 +447,48 @@ async function eventSetActivity (event, client) {
 
         var rowData = await googleSheet.getData(targetDate, member);
         if (rowData == null) {
-            googleSheet.addData(targetDate, sheetConst.activity(eventData.eventName.toString(), targetTime, eventData.members.join(',')), member);
+            var result = await googleSheet.addData(targetDate, sheetConst.activity(eventData.eventName.toString(), targetTime, eventData.members.join(',')), member);
+            
+            if (result == 'out of range') {
+                console.log("err")
+                errorMsg += `\n${member} 日期有誤，請確認後重新建立` 
+            }
+            
         } else {
             var activity = null;
-            if (!rowData.ActivityName) {
+            if (!rowData.ActivityName || eventData.eventName.toString() == rowData.ActivityName) {
                 activity = sheetConst.activity;
-            } else if (!rowData.ActivityName2) {
+            } else if (!rowData.ActivityName2 || eventData.eventName.toString() == rowData.ActivityName2) {
                 activity = sheetConst.activity2;
-            } else if (!rowData.ActivityName3) {
+            } else if (!rowData.ActivityName3 || eventData.eventName.toString() == rowData.ActivityName3) {
                 activity = sheetConst.activity3;
-            } else if (!rowData.ActivityName4) {
+            } else if (!rowData.ActivityName4 || eventData.eventName.toString() == rowData.ActivityName4) {
                 activity = sheetConst.activity4;
-            } else if (!rowData.ActivityName5) {
+            } else if (!rowData.ActivityName5 || eventData.eventName.toString() == rowData.ActivityName5) {
                 activity = sheetConst.activity5;
+            } else if (!rowData.ActivityName6 || eventData.eventName.toString() == rowData.ActivityName6) {
+                activity = sheetConst.activity6;
+            } else if (!rowData.ActivityName7 || eventData.eventName.toString() == rowData.ActivityName7) {
+                activity = sheetConst.activity7;
+            } else if (!rowData.ActivityName8 || eventData.eventName.toString() == rowData.ActivityName8) {
+                activity = sheetConst.activity8;
+            } else if (!rowData.ActivityName9 || eventData.eventName.toString() == rowData.ActivityName9) {
+                activity = sheetConst.activity9;
+            } else if (!rowData.ActivityName10 || eventData.eventName.toString() == rowData.ActivityName10) {
+                activity = sheetConst.activity10;
             }
 
             if (activity == null) {
-                errorMsg += `\n${member} 該日活動已滿，請刪除部分活動!`;
+                errorMsg += `\n${member} 外出活動建立失敗，已超過當日建立上限，請刪除部分活動或與我們聯繫！`;
             } else {
                 googleSheet.addData(targetDate, activity(eventData.eventName.toString(), targetTime, eventData.members.join(',')), member);
             } 
-
-            client.replyMessage(event.replyToken, msgConst.text(`外出活動建立完成 ${errorMsg}`));
         }  
+        if (errorMsg != '') {
+            client.replyMessage(event.replyToken, msgConst.text(`外出活動建立失敗 -${errorMsg}`));
+        } else {
+            client.replyMessage(event.replyToken, msgConst.text('外出活動建立完成'));
+        }
     });
     
     var notifyMsg ='- 外出活動' + 
@@ -510,6 +521,21 @@ async function eventActivitySelectToCancel (username, postback) {
     }
     if (rowData.ActivityName5 && rowData.ActivityName5 != '') {
         activityActions.push(msgConst.action_postback(rowData.ActivityName5, `cancel_activity_${date}_5`))
+    }
+    if (rowData.ActivityName6 && rowData.ActivityName6 != '') {
+        activityActions.push(msgConst.action_postback(rowData.ActivityName6, `cancel_activity_${date}_6`))
+    }
+    if (rowData.ActivityName7 && rowData.ActivityName7 != '') {
+        activityActions.push(msgConst.action_postback(rowData.ActivityName7, `cancel_activity_${date}_7`))
+    }
+    if (rowData.ActivityName8 && rowData.ActivityName8 != '') {
+        activityActions.push(msgConst.action_postback(rowData.ActivityName8, `cancel_activity_${date}_8`))
+    }
+    if (rowData.ActivityName9 && rowData.ActivityName9 != '') {
+        activityActions.push(msgConst.action_postback(rowData.ActivityName9, `cancel_activity_${date}_9`))
+    }
+    if (rowData.ActivityName10 && rowData.ActivityName10 != '') {
+        activityActions.push(msgConst.action_postback(rowData.ActivityName10, `cancel_activity_${date}_10`))
     }
     
     if (activityActions.length == 0) {
@@ -557,6 +583,31 @@ async function eventActivityCancel (username, data) {
             activityName = rowData.ActivityName5;
             time = rowData.ActivityTime5;
             break;
+        case '6':
+            members = rowData.ActivityMember6.split(',');
+            activityName = rowData.ActivityName6;
+            time = rowData.ActivityTime6;
+            break;
+        case '7':
+            members = rowData.ActivityMember7.split(',');
+            activityName = rowData.ActivityName7;
+            time = rowData.ActivityTime7;
+            break;
+        case '8':
+            members = rowData.ActivityMember8.split(',');
+            activityName = rowData.ActivityName8;
+            time = rowData.ActivityTime8;
+            break;
+        case '9':
+            members = rowData.ActivityMember9.split(',');
+            activityName = rowData.ActivityName9;
+            time = rowData.ActivityTime9;
+            break;
+        case '10':
+            members = rowData.ActivityMember10.split(',');
+            activityName = rowData.ActivityName10;
+            time = rowData.ActivityTime10;
+            break;
     }
     
     members.forEach(async member => {
@@ -579,12 +630,28 @@ async function eventActivityCancel (username, data) {
             case memberRowData.ActivityName5:
                 action = sheetConst.activity5;
                 break;
+            case memberRowData.ActivityName6:
+                action = sheetConst.activity6;
+                break;
+            case memberRowData.ActivityName7:
+                action = sheetConst.activity7;
+                break;
+            case memberRowData.ActivityName8:
+                action = sheetConst.activity8;
+                break;
+            case memberRowData.ActivityName9:
+                action = sheetConst.activity9;
+                break;
+            case memberRowData.ActivityName10:
+                action = sheetConst.activity10;
+                break;
         }
 
+        var dateTime = sheetTimeFormat_24(date, time);
         googleSheet.addData(targetDate, action('','',''), member);
-        var notifyMsg = '- 取消外出活動' + 
+        var notifyMsg = '- 取消外出' + 
                         `\n活動名稱：${activityName}` +
-                        `\n活動時間：${date} ${time}` +
+                        `\n活動時間：\n${dateTime}` +
                         `\n參與人員：${members.join(',')}`;
                         
         getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
@@ -602,7 +669,33 @@ async function getWebData (url) {
     } catch (error) {
         console.log(`error: ${error}`)
     }
-  }
+}
+
+function sheetTimeFormat_24 (date, time , join = ' ') {
+    
+    var timeAry = [];
+    var hour = '';
+
+    if (time.includes('下午 ')) {
+        timeAry = time.replace('下午 ', '').split(':');
+        hour = parseInt(timeAry[0]) + 12;
+    } else {
+        timeAry = time.replace('上午 ', '').split(':');
+        hour = parseInt(timeAry[0])
+        hour = hour.toString().padStart(2, '0');
+    }
+    
+    if (date.includes('/')) {
+        date = date.split('/');
+    } else if (date.includes('-')) {
+        date = date.split('-');
+    }
+
+    date[1] = date[1].padStart(2, '0');
+    date[2] = date[2].padStart(2, '0');
+
+    return date.join('-') + join + hour + ":" + timeAry[1];
+}
 
 module.exports = {
     onReceiveEvent

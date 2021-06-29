@@ -12,11 +12,10 @@ class GoogleSheetHandler {
         this.doc = new GoogleSpreadsheet(docID);
         this.creds = require(credentialsPath);
         await this.doc.useServiceAccountAuth(this.creds);
-
         //load document property and worksheets
         await this.doc.loadInfo(); 
 
-        console.log(this.doc.title);
+        console.log('googlesheet linked success with title - ' + this.doc.title);
     }
 
     async addSheet (sheetTitle, header) {
@@ -81,11 +80,12 @@ class GoogleSheetHandler {
 const sheetApi = new GoogleSheetHandler();
 
 function initSheet (docID) {
+    console.log('start linking googlesheet');
     sheetApi.linkSheet(docID);
 }
 
 async function addSheet (title) {
-    var header = ['Date', 'PunchIn', 'PunchOut', 'Location', 'OffWorkType', 'OffWorkStart', 'OffWorkEnd', 'OffWorkConfirm', 'ActivityName', 'ActivityTime', 'ActivityMember', 'ActivityName2', 'ActivityTime2', 'ActivityMember2', 'ActivityName3', 'ActivityTime3', 'ActivityMember3', 'ActivityName4', 'ActivityTime4', 'ActivityMember4', 'ActivityName5', 'ActivityTime5', 'ActivityMember5'];
+    var header = ['Date', 'PunchIn', 'PunchOut', 'Location', 'OffWorkType', 'OffWorkStart', 'OffWorkEnd', 'OffWorkConfirm', 'ActivityName', 'ActivityTime', 'ActivityMember', 'ActivityName2', 'ActivityTime2', 'ActivityMember2', 'ActivityName3', 'ActivityTime3', 'ActivityMember3', 'ActivityName4', 'ActivityTime4', 'ActivityMember4', 'ActivityName5', 'ActivityTime5', 'ActivityMember5', 'ActivityName6', 'ActivityTime6', 'ActivityMember6', 'ActivityName7', 'ActivityTime7', 'ActivityMember7', 'ActivityName8', 'ActivityTime8', 'ActivityMember8', 'ActivityName9', 'ActivityTime9', 'ActivityMember9', 'ActivityName10', 'ActivityTime10', 'ActivityMember10'];
     return await sheetApi.addSheet(title, header);
 }
 
@@ -147,6 +147,21 @@ async function addData (date, properties, username) {
             rows[deviation].ActivityName5 = properties.ActivityName5;
             rows[deviation].ActivityTime5 = properties.ActivityTime5;
             rows[deviation].ActivityMember5 = properties.ActivityMember5;
+            rows[deviation].ActivityName6 = properties.ActivityName6;
+            rows[deviation].ActivityTime6 = properties.ActivityTime6;
+            rows[deviation].ActivityMember6 = properties.ActivityMember6;
+            rows[deviation].ActivityName7 = properties.ActivityName7;
+            rows[deviation].ActivityTime7 = properties.ActivityTime7;
+            rows[deviation].ActivityMember7 = properties.ActivityMember7;
+            rows[deviation].ActivityName8 = properties.ActivityName8;
+            rows[deviation].ActivityTime8 = properties.ActivityTime8;
+            rows[deviation].ActivityMember8 = properties.ActivityMember8;
+            rows[deviation].ActivityName9 = properties.ActivityName9;
+            rows[deviation].ActivityTime9 = properties.ActivityTime9;
+            rows[deviation].ActivityMember9 = properties.ActivityMember9;
+            rows[deviation].ActivityName10 = properties.ActivityName10;
+            rows[deviation].ActivityTime10 = properties.ActivityTime10;
+            rows[deviation].ActivityMember10 = properties.ActivityMember10;
 
             rows[deviation].save();
         } 
@@ -183,8 +198,25 @@ async function addData (date, properties, username) {
             rows[rows.length - 1].ActivityName5 = properties.ActivityName5;
             rows[rows.length - 1].ActivityTime5 = properties.ActivityTime5;
             rows[rows.length - 1].ActivityMember5 = properties.ActivityMember5;
+            rows[rows.length - 1].ActivityName6 = properties.ActivityName6;
+            rows[rows.length - 1].ActivityTime6 = properties.ActivityTime6;
+            rows[rows.length - 1].ActivityMember6 = properties.ActivityMember6;
+            rows[rows.length - 1].ActivityName7 = properties.ActivityName7;
+            rows[rows.length - 1].ActivityTime7 = properties.ActivityTime7;
+            rows[rows.length - 1].ActivityMember7 = properties.ActivityMember7;
+            rows[rows.length - 1].ActivityName8 = properties.ActivityName8;
+            rows[rows.length - 1].ActivityTime8 = properties.ActivityTime8;
+            rows[rows.length - 1].ActivityMember8 = properties.ActivityMember8;
+            rows[rows.length - 1].ActivityName9 = properties.ActivityName9;
+            rows[rows.length - 1].ActivityTime9 = properties.ActivityTime9;
+            rows[rows.length - 1].ActivityMember9 = properties.ActivityMember9;
+            rows[rows.length - 1].ActivityName10 = properties.ActivityName10;
+            rows[rows.length - 1].ActivityTime10 = properties.ActivityTime10;
+            rows[rows.length - 1].ActivityMember10 = properties.ActivityMember10;
 
             rows[rows.length - 1].save();
+        } else {
+            return 'out of range';
         }
     } 
     else {
@@ -209,7 +241,7 @@ async function getData (date, username) {
         sheet = addSheet(username);
         return null;
     }
-    
+
     console.log(`title: ${sheet.title}`);
     var rows = await sheetApi.getRows(sheet);
 

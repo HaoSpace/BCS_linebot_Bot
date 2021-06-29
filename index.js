@@ -41,10 +41,11 @@ googleSheet.initSheet(settings.get('Settings.googleSheetId'));
 
 // event handler
 async function handleEvent(event) {
-  console.log(`${JSON.stringify(event)}`);
+  console.log(`index.js - message received - \n${JSON.stringify(event)}`);
   if ((event.type == 'postback' && event.postback.data == 'link') || 
   (event.type == 'postback' && event.postback.data == 'simpleLink') ||
-  (event.type == 'accountLink')) {
+  (event.type == 'accountLink') || 
+  (event.type == 'follow')) {
     
     receiver.onReceiveEvent(event, client)
     .then ((replyMsg) => {
@@ -58,14 +59,19 @@ async function handleEvent(event) {
       console.error(error);
     })
   } else {
+    if (event.type == 'unfollow') {
+      return Promise.resolve(null);;
+    }
     db.getData(event.source.userId, async (error, row) => {
       if (error != null) {
+        console.log("1");
         var action = msgConst.action_postback('帳號綁定', 'link');
     
         var replyMsg = msgConst.button(null, '帳號尚未綁定', '帳號尚未綁定', defaultImg, [action]);
         replyText(event.replyToken, replyMsg);
       }
       else { 
+
         var nonce = row.nonce;
         var url =`${webPath}/getname?nonce=${nonce}`
       
@@ -123,7 +129,7 @@ async function getWebData (url) {
 
 
 // listen on port
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 18;
 app.listen(port, () => {
   console.log(`listening on ${port}`);
 });
