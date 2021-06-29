@@ -230,6 +230,7 @@ async function handleLocation (event, username) {
     var location = `address: ${event.address} \nposition: (${event.latitude},${event.longitude})`;
 
     var row = await googleSheet.getData(currentDate, username);
+
     if (row == null || row.PunchIn == '') {
         googleSheet.addData(currentDate, sheetConst.checkIn(currentTime, location), username);
     }
@@ -305,16 +306,22 @@ function eventCheckIn () {
     return quickCheckIn;
 }
 
-function eventCheckOut (username) {
+async function eventCheckOut (username) {
     var date = new Date(Date.now());
     var currentTime = date.toLocaleTimeString();
     var currentDate = date.toLocaleDateString();
+
+    var currentRow = await googleSheet.getData(currentDate, username);
+
+    if (!currentRow.PunchIn || currentRow.PunchIn == '') {
+        return msgConst.text('你尚未上班打卡');
+    }
     googleSheet.addData(currentDate, sheetConst.checkOut(currentTime), username);
 
     var returnMsg = `${username} 下班打卡完成` + 
                     `\n${date.toLocaleString()}`
    
-    return msgConst.text(returnMsg); 
+    return msgConst.text(returnMsg);
 }
 
 function eventLeave () {
