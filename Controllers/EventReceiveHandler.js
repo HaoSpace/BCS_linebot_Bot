@@ -380,7 +380,7 @@ async function eventLeaveEnd (postback, username) {
         var deviation = (Date.parse(targetDate) - Date.parse(startDate)) / (24*60*60*1000);
         
         if (deviation == 0) {
-            googleSheet.addData(currentRowDate, sheetConst.offWorkEnd(targetTime), username);
+            googleSheet.addData(targetDate, sheetConst.offWorkEnd(targetTime), username);
         } else {
             var asyncRun = async () => {
                 for (var i = 0; i <= deviation; i++) {
