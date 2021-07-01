@@ -165,7 +165,7 @@ async function linkAccount (event, client) {
 
     var token = await client.getLinkToken(event.source.userId);
 
-    var urlLink = `${liffPath}/link?link_token=${token}`;
+    var urlLink = `${webPath}/link?link_token=${token}`;
     console.log(`link: ${urlLink}`);
     
     return msgConst.flex_button('點此綁定帳號', urlLink);
@@ -231,7 +231,7 @@ async function handleLocation (event, username) {
 
     var row = await googleSheet.getData(currentDate, username);
 
-    if (row == null || row.PunchIn == '') {
+    if (row == null || !row.PunchIn || row.PunchIn == '') {
         googleSheet.addData(currentDate, sheetConst.checkIn(currentTime, location), username);
     }
 
@@ -448,7 +448,7 @@ async function eventOffWorkCancel (username, postback) {
 
             getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
             
-            return msgConst.text(`請假已取消 - ${targetDate}`);
+            return msgConst.text(`${notifyMsg.replace('- ', '')}`);
         } else {
             googleSheet.addData(targetDate, sheetConst.offWorkStart(`${type_str}(已取消)`, rowData.OffWorkStart), username);
 
@@ -458,7 +458,7 @@ async function eventOffWorkCancel (username, postback) {
                             `\n結束時間：\n${rowData.Date} ${rowData.OffWorkEnd}` +
                             `\n人員：${username}`;
             getWebData(`${webPath}/sendnotify?msg=${encodeURI(notifyMsg)}`);
-            return msgConst.text(`請假已取消 - ${targetDate}`);
+            return msgConst.text(`${notifyMsg.replace('- ', '')}`);
         }
     }
 
