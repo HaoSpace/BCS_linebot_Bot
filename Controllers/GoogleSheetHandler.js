@@ -39,7 +39,9 @@ class GoogleSheetHandler {
         return this.doc.sheetsById[id];
     }
 
-    getSheetList () {
+    async getSheetList () {
+        await this.doc.resetLocalCache();
+        await this.doc.loadInfo(); 
         var count = this.doc.sheetCount;
         var sheets = [];
         for (var i = 0; i < count; i++) {
@@ -231,8 +233,8 @@ async function addData (date, properties, username) {
 
 // function appendRowWith
 
-function getAllSheetName () {
-    return sheetApi.getSheetList();
+async function getAllSheetName () {
+    return await sheetApi.getSheetList();
 }
 
 async function getData (date, username) {
