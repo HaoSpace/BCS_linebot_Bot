@@ -181,8 +181,9 @@ async function addData (date, properties, username) {
             var propertyAry = new Array(deviation).fill(0);
 
             propertyAry = propertyAry.map(function(value, index, array) {
-                var dateValue = new Date(lastDate + ((index + 1) * (24*60*60*1000)));
-                return sheetConst.date(dateValue.toLocaleDateString());
+                var dateTime = getDateTimeData(lastDate + ((index + 1) * (24*60*60*1000)));
+                var targetDate = `${dateTime.year}/${dateTime.month}/${dateTime.date}`;
+                return sheetConst.date(targetDate);
             });
 
             await sheetApi.appendRows(sheet, propertyAry);
@@ -268,6 +269,26 @@ async function getData (date, username) {
     }
 
     return null;
+}
+
+function getDateTimeData (value) {
+    var dateTime = new Date(value);
+    var yearValue = dateTime.getFullYear();
+    var monthValue = dateTime.getMonth() + 1;
+    var dateValue = dateTime.getDate();
+    var hourValue = dateTime.getHours().toString().padStart(2, '0');
+    var minValue = dateTime.getMinutes().toString().padStart(2, '0');
+    var secValue = dateTime.getSeconds().toString().padStart(2, '0');
+
+    return {
+        origin: dateTime,
+        year: yearValue,
+        month: monthValue,
+        date: dateValue,
+        hour: hourValue,
+        min: minValue,
+        sec: secValue
+    }
 }
 
 
