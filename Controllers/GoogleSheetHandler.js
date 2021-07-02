@@ -89,7 +89,11 @@ function initSheet (docID) {
 async function addSheet (title) {
     var header = ['Date', 'PunchIn', 'PunchOut', 'Location', 'OffWorkType', 'OffWorkStart', 'OffWorkEnd', 'OffWorkConfirm', 'ActivityName', 'ActivityTime', 'ActivityMember', 'ActivityName2', 'ActivityTime2', 'ActivityMember2', 'ActivityName3', 'ActivityTime3', 'ActivityMember3', 'ActivityName4', 'ActivityTime4', 'ActivityMember4', 'ActivityName5', 'ActivityTime5', 'ActivityMember5', 'ActivityName6', 'ActivityTime6', 'ActivityMember6', 'ActivityName7', 'ActivityTime7', 'ActivityMember7', 'ActivityName8', 'ActivityTime8', 'ActivityMember8', 'ActivityName9', 'ActivityTime9', 'ActivityMember9', 'ActivityName10', 'ActivityTime10', 'ActivityMember10'];
     
-    var sheet = await sheetApi.addSheet(title, ['Date']);
+    var sheet = sheetApi.getSheetByTitle(title);
+    if (!sheet) {
+        sheet = await sheetApi.addSheet(title, ['Date']);
+    }
+   
     await sheet.resize({ rowCount: 1000, columnCount: 38 });
     await sheet.setHeaderRow(header);
 
